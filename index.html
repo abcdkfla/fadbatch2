@@ -1,98 +1,579 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="C. glutamicum Fed-batch 운전 조건 비교용 교육 시뮬레이터">
-<title>Fed-Batch Lab | 배양 워크스테이션</title>
-<link rel="stylesheet" href="./base.css">
-<link rel="stylesheet" href="./workstation.css">
-<link rel="stylesheet" href="./design.css">
-<script defer src="./model.js"></script>
-<script defer src="./ui.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#FEE500" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>👟 신발 주문서</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --kakao: #FEE500;
+      --kakao-dark: #3C1E1E;
+      --primary: #191919;
+      --green: #16a34a;
+      --red: #dc2626;
+      --orange: #ea580c;
+      --gray: #6b7280;
+      --border: #e5e7eb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--primary);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+    .account-bar {
+      background: var(--kakao);
+      color: var(--kakao-dark);
+      text-align: center;
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .account-bar small {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      opacity: 0.8;
+      margin-bottom: 2px;
+    }
+    .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 1.4rem; text-align: center; margin: 16px 0 20px; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+    .tab {
+      flex: 1; padding: 11px 6px; border: none; border-radius: 10px;
+      font-size: 0.88rem; font-weight: 600; cursor: pointer;
+      background: #e5e7eb; color: #374151;
+    }
+    .tab.active { background: var(--primary); color: white; }
+    .card {
+      background: var(--card); border-radius: 14px; padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 16px;
+    }
+    label {
+      display: block; font-size: 0.9rem; font-weight: 600;
+      margin-bottom: 6px; color: #374151;
+    }
+    input[type="text"], input[type="password"], select {
+      width: 100%; padding: 14px 12px; border: 1.5px solid var(--border);
+      border-radius: 10px; font-size: 1rem; margin-bottom: 16px; background: #fafafa;
+    }
+    input:focus, select:focus { outline: none; border-color: #3b82f6; background: white; }
+    .btn {
+      width: 100%; padding: 14px; border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:active { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-danger { background: var(--red); color: white; }
+    .btn-recover { background: var(--orange); color: white; font-size: 0.85rem; padding: 8px 12px; width: auto; }
+    .btn-sm { padding: 8px 12px; font-size: 0.85rem; width: auto; border-radius: 8px; }
+    .filter-row { display: flex; gap: 6px; margin-bottom: 14px; }
+    .filter-btn {
+      flex: 1; padding: 10px 6px; border: 1.5px solid var(--border);
+      border-radius: 8px; background: white; font-size: 0.85rem;
+      font-weight: 600; cursor: pointer;
+    }
+    .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .order-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .order-item:last-child { border-bottom: none; }
+    .order-item input[type="checkbox"] {
+      width: 22px; height: 22px; accent-color: var(--green); flex-shrink: 0;
+    }
+    .order-info { flex: 1; min-width: 0; }
+    .order-name { font-weight: 700; font-size: 1rem; }
+    .order-meta { font-size: 0.8rem; color: var(--gray); margin-top: 2px; }
+    .badge {
+      font-size: 0.75rem; padding: 3px 8px; border-radius: 20px;
+      font-weight: 600; flex-shrink: 0;
+    }
+    .badge.paid { background: #dcfce7; color: #166534; }
+    .badge.unpaid { background: #fee2e2; color: #991b1b; }
+    .stats { display: flex; gap: 10px; margin-top: 16px; }
+    .stat {
+      flex: 1; text-align: center; background: #f9fafb;
+      padding: 12px 8px; border-radius: 10px;
+    }
+    .stat .num { font-size: 1.3rem; font-weight: 700; }
+    .stat .label { font-size: 0.75rem; color: var(--gray); }
+    .empty { text-align: center; color: var(--gray); padding: 40px 20px; font-size: 0.95rem; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #166534; color: white; padding: 12px 24px; border-radius: 30px;
+      font-weight: 600; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s;
+      z-index: 200; pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+    .toast.error { background: #991b1b; }
+    .hidden { display: none; }
+    .login-box { text-align: center; }
+    .login-box p { color: var(--gray); font-size: 0.9rem; margin-bottom: 16px; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 300; padding: 20px;
+    }
+    .modal {
+      background: white; border-radius: 16px; padding: 24px;
+      max-width: 340px; width: 100%; text-align: center;
+    }
+    .modal h3 { font-size: 1.1rem; margin-bottom: 8px; }
+    .modal p { color: var(--gray); font-size: 0.9rem; margin-bottom: 20px; }
+    .modal-btns { display: flex; gap: 10px; }
+    .modal-btns button {
+      flex: 1; padding: 12px; border: none; border-radius: 10px;
+      font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    }
+    .modal-cancel { background: #e5e7eb; color: #374151; }
+    .modal-confirm { background: var(--red); color: white; }
+    .config-warn {
+      background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;
+      padding: 12px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 16px;
+    }
+  </style>
 </head>
 <body>
-<aside class="rail">
-  <a class="brand" href="#overview"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65"><path d="M7 7h10v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM9 4h6m-3 0v12M9 15l3 1 3-1M5 11h2m10 0h2"/></svg></span>Fed-Batch Lab</a>
-  <nav aria-label="주 메뉴">
-    <a href="#overview">배양 개요</a><a href="#trend">배양 추세</a><a href="#explore">조건 탐색</a><a href="#data">시간별 데이터</a><a href="#formula">수식·고정값</a><a href="#sources">논문 출처</a>
-  </nav>
-  <div class="sidefoot">공정 시뮬레이터</div>
-</aside>
-<div class="shell">
-  <header><strong>배양 워크스테이션</strong><div class="badge">시뮬레이션 모드</div></header>
-  <div class="batchbar"><div class="vesselchip">V1 <small>단일 반응기</small></div><div class="strain-chip"><small>균주</small><strong><i>C. glutamicum</i> ATCC 13032</strong></div><small>ARA G-FLD 5 L · 작업 상한 2.5 L</small></div>
-  <main>
-    <section class="section" id="overview">
-      <div class="section-head"><h1>배양 개요</h1><p>운전 변수 6개 · 최대 24시간 · 30분 간격</p></div>
-      <div class="workbench">
-        <form id="setup" class="card">
-          <h2 class="panel-title">운전 설계 <span>6개 변수</span></h2>
-          <label>목표 비성장속도 (h⁻¹)<select id="mu" aria-describedby="mu-help"></select></label>
-          <p id="mu-help" class="t-secondary">0시간부터 목표 비성장속도를 적용합니다. 산소나 기질이 부족해 목표를 유지할 수 없으면 종료합니다.</p>
-          <label>교반 (rpm)<select id="rpm"></select></label>
-          <label>초기 배양 부피 (L)<select id="volume"></select></label>
-          <label>공기 통기량 (vvm)<select id="vvm" aria-describedby="air-help"></select></label>
-          <p id="air-help" class="t-secondary">실행 중 vvm은 일정하며, 공기 유량(L/min)은 vvm × 현재 부피(L)입니다.</p>
-          <label>공급액 글루코스 (g/L)<select id="feed" aria-describedby="feed-help"></select></label>
-          <p id="feed-help" class="t-secondary">기본 100 g/L · 최대 800 g/L · 100 g/L 간격. 혼합 후 배양기 내부 상한은 50 g/L입니다.</p>
-          <label>공급 개시 기준 (g/L)<select id="threshold" aria-describedby="threshold-help"></select></label>
-          <p id="threshold-help" class="t-secondary">잔류 글루코스가 기준 이하이면 공급하고, 기준을 넘으면 멈췄다가 다시 내려오면 재개합니다.</p>
-          <button class="btn primary" type="submit">▶ 시뮬레이션 실행</button>
-          <p id="run-status" role="status"></p>
-        </form>
-        <div class="card-stack">
-          <article class="card"><h2 class="panel-title">배양 결과 <span>모델 추정</span></h2><div class="tiles" id="metrics"></div></article>
-          <article class="card overview-results design-overview">
-            <div class="vessel-view">
-              <svg viewBox="0 0 180 190" role="img" aria-label="최종 부피를 나타낸 모의 배양기">
-                <defs><clipPath id="vessel-clip"><path d="M42 50h96v92a25 25 0 0 1-25 25H67a25 25 0 0 1-25-25Z"/></clipPath></defs>
-                <path d="M42 50h96v92a25 25 0 0 1-25 25H67a25 25 0 0 1-25-25Z" fill="#f3f7f7" stroke="#53777b" stroke-width="3"/>
-                <rect id="liquid" x="42" y="167" width="96" height="0" fill="#a5d8c8" clip-path="url(#vessel-clip)"/>
-                <path d="M35 50h110M90 30v98m-20 0 20 9 20-9M55 175h70M74 30h32V13H74Z" fill="none" stroke="#53777b" stroke-width="4" stroke-linecap="round"/>
-              </svg><strong id="vessel-label"></strong>
-            </div>
-            <div><h2 class="panel-title">종료 상태</h2><p id="end-info"></p><p class="t-secondary">24시간, 2.5 L, 목표 μ 유지 불가 중 먼저 발생한 시점에 종료합니다.</p><p><a href="#explore">공급 개시 조건 비교 →</a></p></div>
-          </article>
-        </div>
+
+  <div class="account-bar">
+    <small>💰 입금계좌</small>
+    카카오뱅크 3333132319780
+  </div>
+
+  <div class="container">
+    <h1>👟 신발 주문서</h1>
+
+    <div id="configWarn" class="config-warn hidden">
+      ⚠️ Supabase URL / Key가 설정되지 않았습니다.<br>
+      HTML 파일 상단 스크립트의 SUPABASE_URL, SUPABASE_ANON_KEY를 채워주세요.
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabBtn-order" onclick="showTab('order')">📝 주문하기</button>
+      <button class="tab" id="tabBtn-list" onclick="showTab('list')">📋 주문목록</button>
+      <button class="tab" id="tabBtn-admin" onclick="showTab('admin')">🔐 관리자</button>
+    </div>
+
+    <!-- 주문하기 -->
+    <div id="tab-order">
+      <div class="card">
+        <label for="name">이름</label>
+        <input type="text" id="name" placeholder="홍길동" maxlength="20" />
+        <label for="size">신발 사이즈</label>
+        <select id="size"></select>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitOrder()">주문 제출하기</button>
       </div>
-    </section>
-    <section class="section" id="trend" hidden>
-      <div class="section-head"><h1>배양 추세</h1><p>0시간부터 목표 μ를 적용합니다. 마지막 점에는 종료 시점의 모델 계산값을 표시합니다.</p></div>
-      <article class="card"><div class="design-toolbar"><label>표시 변수 <select id="series"></select></label><output id="point"></output></div>
-        <svg id="graph" viewBox="0 0 880 340" role="img" aria-label="배양 시간에 따른 선택 지표 변화"></svg>
-        <label class="time-control">조회 시간 <input id="time" type="range" min="0" max="24" value="0"></label>
-      </article>
-    </section>
-    <section class="section" id="explore" hidden>
-      <div class="section-head"><h1>조건 탐색</h1><p>다른 운전 조건을 고정하고, 잔류 글루코스 5·4·3·2·1 g/L에서 공급을 시작했을 때의 겉보기 수율을 비교합니다.</p></div>
-      <article class="card"><h2 class="panel-title">공급 개시 기준 비교</h2><p id="best"></p><div class="tablewrap"><table><thead><tr><th>기준 (g/L)</th><th>실제 개시 (h)</th><th>종료 (h)</th><th>최종 균체량 (g)</th><th>겉보기 수율 (g/g)</th><th>선택</th></tr></thead><tbody id="ranking"></tbody></table></div></article>
-    </section>
-    <section class="section" id="data" hidden>
-      <div class="section-head"><h1>시간별 데이터</h1><p>0시간부터 30분 간격으로 기록합니다. 간격 사이에 종료하면 실제 종료 시각도 기록합니다.</p></div>
-      <article class="card"><div class="design-toolbar"><h2 class="panel-title">시뮬레이션 기록</h2><button id="csv" class="btn">CSV 내려받기</button></div><div class="tablewrap"><table><thead><tr><th>시간 (h)</th><th>균체 (g/L)</th><th>글루코스 (g/L)</th><th>부피 (L)</th><th>μ (h⁻¹)</th><th>DO (%)</th><th>OTR (mmol/L/h)</th><th>kLa (h⁻¹)</th><th>공급 (mL/h)</th></tr></thead><tbody id="samples"></tbody></table></div></article>
-    </section>
-    <section class="section" id="formula" hidden>
-      <div class="section-head"><h1>수식·고정값</h1><p>계산에 쓰는 식과 참고 전용 값을 구분했습니다.</p></div>
-      <article class="card"><h2 class="panel-title">균주·장비 고정값</h2><div class="tablewrap"><table><thead><tr><th>항목</th><th>값</th><th>적용</th></tr></thead><tbody id="constants"></tbody></table></div></article>
-      <article class="card formulas"><h2 class="panel-title">모델에 사용하는 식</h2>
-        <p><b>성장·기질:</b> μ<sub>Monod</sub> = μ<sub>max</sub>·S/(K<sub>S</sub>+S). 0시간부터 μ = min(μ<sub>Monod</sub>, μ<sub>set</sub>, μ<sub>산소 한도</sub>). 목표 μ를 유지할 수 없는 첫 계산점에서 종료합니다. q<sub>S</sub> = μ/Y + m<sub>S</sub></p>
-        <p><b>산소 전달:</b> P₀ = NₚρN³d⁵n, P<sub>g</sub> = 0.5P₀, v<sub>s</sub> = Q/A, k<sub>L</sub>a = 0.026(P<sub>g</sub>/V)<sup>0.4</sup>v<sub>s</sub><sup>0.5</sup> (s⁻¹), OTR = k<sub>L</sub>a(C*−C)</p>
-        <p><b>산소 제한:</b> OUR ≈ 12q<sub>S</sub>X. OTR 상한(k<sub>L</sub>a·C*, 단위 환산 후)을 넘지 않도록 μ와 소비량을 제한합니다. DO는 정상상태 근사입니다.</p>
-        <p><b>공급 제어:</b> S ≤ S<sub>전환</sub>이면 F<sub>s</sub> = (μ<sub>set</sub>/Y + m<sub>S</sub>)·XV/(c<sub>S</sub>−S<sub>전환</sub>), 아니면 F<sub>s</sub> = 0. 공급액 농도 c<sub>S</sub>는 실행 중 고정합니다.</p>
-        <p><b>겉보기 수율:</b> (최종 균체량 − 초기 균체량) ÷ 누적 소비 글루코스. 최종 균체량과는 다른 지표입니다.</p>
-      </article>
-      <article class="card formulas"><h2 class="panel-title">Fed-batch 부피·희석 수지</h2>
-        <p><b>부피:</b> dV/dt = F<sub>s</sub></p>
-        <p><b>균체 농도:</b> dX/dt = μ·X − (X/V)·dV/dt</p>
-        <p><b>글루코스 농도:</b> dS/dt = −q<sub>s</sub>·X + F<sub>s</sub>·c<sub>s</sub>/V − (S/V)·dV/dt</p>
-      </article>
-    </section>
-    <section class="section" id="sources" hidden>
-      <div class="section-head"><h1>논문 출처</h1><p>첨부 자료에 기재된 출처 표기입니다.</p></div>
-      <article class="card formulas"><p>Graf (2020) · CGXII 케모스탯: μmax, Y, m<sub>S</sub></p><p>Steinhoff (2023) · 마이크로플루이딕: K<sub>S</sub></p><p>Zhang (2017) · iCW773: OD600–DCW 환산</p><p>van’t Riet (1979) · 비응집성 수용액 kLa 상관식</p></article>
-    </section>
-  </main>
-</div>
+    </div>
+
+    <!-- 주문목록 -->
+    <div id="tab-list" class="hidden">
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="setFilter('all', this)">전체</button>
+        <button class="filter-btn" onclick="setFilter('paid', this)">입금완료</button>
+        <button class="filter-btn" onclick="setFilter('unpaid', this)">미입금</button>
+      </div>
+      <div class="card" id="orderList"></div>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <!-- 관리자 -->
+    <div id="tab-admin" class="hidden">
+      <div class="card login-box" id="adminLogin">
+        <p>관리자만 접근할 수 있습니다</p>
+        <label for="adminPw">비밀번호</label>
+        <input type="password" id="adminPw" placeholder="비밀번호 입력" />
+        <button class="btn btn-primary" onclick="adminLogin()">로그인</button>
+      </div>
+
+      <div id="adminPanel" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <strong>관리자 모드</strong>
+          <button class="btn btn-sm" style="background:#e5e7eb; color:#374151;" onclick="adminLogout()">로그아웃</button>
+        </div>
+        <div class="filter-row">
+          <button class="filter-btn active" id="adminFilter-active" onclick="setAdminFilter('active', this)">주문 목록</button>
+          <button class="filter-btn" id="adminFilter-trash" onclick="setAdminFilter('trash', this)">휴지통</button>
+        </div>
+        <div class="card" id="adminList"></div>
+        <div class="stats" id="adminStats"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="confirmModal">
+    <div class="modal">
+      <h3>정말 삭제할까요?</h3>
+      <p>삭제된 주문은 휴지통으로 이동됩니다.<br>나중에 복구할 수 있습니다.</p>
+      <div class="modal-btns">
+        <button class="modal-cancel" onclick="closeModal()">취소</button>
+        <button class="modal-confirm" id="confirmDeleteBtn">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============================================================
+    //  1) Supabase 설정 (여기만 채우세요)
+    // ============================================================
+    const SUPABASE_URL = "https://bqcgpqjhbolehpmygzjn.supabase.co";           // 예: https://xxxxx.supabase.co
+    const SUPABASE_ANON_KEY = "sb_publishable_t92k8pK4XBIlEn4M3c9Ahw_3WzmY7oy"; // anon public key
+    // ============================================================
+
+    // ============================================================
+    //  2) 사이즈 설정 (간격 바꾸려면 SIZE_STEP만 수정)
+    // ============================================================
+    const SIZE_MIN  = 200;
+    const SIZE_MAX  = 300;
+    const SIZE_STEP = 5;   // 10으로 바꾸려면 5 → 10
+    // ============================================================
+
+    const ADMIN_PW = "031208";
+    const ADMIN_SESSION = "shoe_admin_logged_in";
+
+    let supabase = null;
+    let currentFilter = "all";
+    let adminFilter = "active";
+    let pendingDeleteId = null;
+
+    // Supabase 초기화
+    function initSupabase() {
+      if (!SUPABASE_URL || SUPABASE_URL.includes("YOUR_") ||
+          !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes("YOUR_")) {
+        document.getElementById("configWarn").classList.remove("hidden");
+        return false;
+      }
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      return true;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showToast(msg, isError) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.classList.toggle("error", !!isError);
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    function formatTime(iso) {
+      if (!iso) return "";
+      try {
+        return new Date(iso).toLocaleString("ko-KR");
+      } catch { return iso; }
+    }
+
+    // ---------- 사이즈 드롭다운 ----------
+    function initSizeSelect() {
+      const select = document.getElementById("size");
+      select.innerHTML = "";
+      for (let s = SIZE_MIN; s <= SIZE_MAX; s += SIZE_STEP) {
+        const opt = document.createElement("option");
+        opt.value = s;
+        opt.textContent = s;
+        if (s === 250) opt.selected = true;
+        select.appendChild(opt);
+      }
+    }
+
+    // ---------- 탭 ----------
+    function showTab(tab) {
+      ["order", "list", "admin"].forEach(t => {
+        document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab);
+        document.getElementById("tabBtn-" + t).classList.toggle("active", t === tab);
+      });
+      if (tab === "list") renderList();
+      if (tab === "admin") {
+        if (sessionStorage.getItem(ADMIN_SESSION) === "1") {
+          showAdminPanel();
+        } else {
+          document.getElementById("adminLogin").classList.remove("hidden");
+          document.getElementById("adminPanel").classList.add("hidden");
+        }
+      }
+    }
+
+    // ---------- 주문 제출 ----------
+    async function submitOrder() {
+      if (!supabase) {
+        showToast("Supabase 설정이 필요합니다", true);
+        return;
+      }
+      const name = document.getElementById("name").value.trim();
+      const size = parseInt(document.getElementById("size").value, 10);
+      if (!name) {
+        showToast("이름을 입력해주세요", true);
+        return;
+      }
+
+      const btn = document.getElementById("submitBtn");
+      btn.disabled = true;
+      btn.textContent = "제출 중...";
+
+      const { error } = await supabase.from("orders").insert({
+        name: name,
+        size: size,
+        paid: false,
+        deleted: false
+      });
+
+      btn.disabled = false;
+      btn.textContent = "주문 제출하기";
+
+      if (error) {
+        console.error(error);
+        showToast("저장 실패: " + error.message, true);
+        return;
+      }
+
+      document.getElementById("name").value = "";
+      showToast("✅ 주문이 접수되었습니다!");
+    }
+
+    // ---------- 주문 목록 (일반) ----------
+    function setFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll("#tab-list .filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderList();
+    }
+
+    async function fetchActiveOrders() {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("deleted", false)
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.error(error);
+        showToast("목록 불러오기 실패", true);
+        return [];
+      }
+      return data || [];
+    }
+
+    async function renderList() {
+      if (!supabase) {
+        document.getElementById("orderList").innerHTML = '<div class="empty">Supabase 설정 필요</div>';
+        return;
+      }
+      const orders = await fetchActiveOrders();
+      let filtered = orders;
+      if (currentFilter === "paid") filtered = orders.filter(o => o.paid);
+      if (currentFilter === "unpaid") filtered = orders.filter(o => !o.paid);
+
+      const listEl = document.getElementById("orderList");
+      const statsEl = document.getElementById("stats");
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div class="empty">' + (orders.length === 0 ? "아직 주문이 없습니다" : "해당 조건의 주문이 없습니다") + '</div>';
+      } else {
+        listEl.innerHTML = filtered.map(o =>
+          '<div class="order-item">' +
+            '<input type="checkbox" ' + (o.paid ? "checked" : "") +
+              ' onchange="togglePaid(\'' + o.id + '\', this.checked)" />' +
+            '<div class="order-info">' +
+              '<div class="order-name">' + escapeHtml(o.name) + '</div>' +
+              '<div class="order-meta">사이즈 ' + o.size + ' · ' + formatTime(o.created_at) + '</div>' +
+            '</div>' +
+            '<span class="badge ' + (o.paid ? "paid" : "unpaid") + '">' +
+              (o.paid ? "입금완료" : "미입금") + '</span>' +
+          '</div>'
+        ).join("");
+      }
+
+      const paidCount = orders.filter(o => o.paid).length;
+      statsEl.innerHTML =
+        '<div class="stat"><div class="num">' + orders.length + '</div><div class="label">전체</div></div>' +
+        '<div class="stat"><div class="num" style="color:var(--green)">' + paidCount + '</div><div class="label">입금완료</div></div>' +
+        '<div class="stat"><div class="num" style="color:var(--red)">' + (orders.length - paidCount) + '</div><div class="label">미입금</div></div>';
+    }
+
+    async function togglePaid(id, checked) {
+      if (!supabase) return;
+      const { error } = await supabase
+        .from("orders")
+        .update({ paid: checked })
+        .eq("id", id);
+      if (error) {
+        showToast("업데이트 실패", true);
+        renderList();
+        return;
+      }
+      renderList();
+    }
+
+    // ---------- 관리자 ----------
+    function adminLogin() {
+      const pw = document.getElementById("adminPw").value;
+      if (pw === ADMIN_PW) {
+        sessionStorage.setItem(ADMIN_SESSION, "1");
+        document.getElementById("adminPw").value = "";
+        showAdminPanel();
+        showToast("관리자 로그인 성공");
+      } else {
+        showToast("비밀번호가 틀렸습니다", true);
+      }
+    }
+
+    function adminLogout() {
+      sessionStorage.removeItem(ADMIN_SESSION);
+      document.getElementById("adminLogin").classList.remove("hidden");
+      document.getElementById("adminPanel").classList.add("hidden");
+      showToast("로그아웃 되었습니다");
+    }
+
+    function showAdminPanel() {
+      document.getElementById("adminLogin").classList.add("hidden");
+      document.getElementById("adminPanel").classList.remove("hidden");
+      renderAdminList();
+    }
+
+    function setAdminFilter(filter, btn) {
+      adminFilter = filter;
+      document.getElementById("adminFilter-active").classList.toggle("active", filter === "active");
+      document.getElementById("adminFilter-trash").classList.toggle("active", filter === "trash");
+      renderAdminList();
+    }
+
+    async function fetchTrashOrders() {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("deleted", true)
+        .order("deleted_at", { ascending: false });
+      if (error) {
+        console.error(error);
+        return [];
+      }
+      return data || [];
+    }
+
+    async function renderAdminList() {
+      if (!supabase) {
+        document.getElementById("adminList").innerHTML = '<div class="empty">Supabase 설정 필요</div>';
+        return;
+      }
+      const listEl = document.getElementById("adminList");
+      const statsEl = document.getElementById("adminStats");
+
+      if (adminFilter === "active") {
+        const orders = await fetchActiveOrders();
+        if (orders.length === 0) {
+          listEl.innerHTML = '<div class="empty">주문이 없습니다</div>';
+        } else {
+          listEl.innerHTML = orders.map(o =>
+            '<div class="order-item">' +
+              '<div class="order-info">' +
+                '<div class="order-name">' + escapeHtml(o.name) + '</div>' +
+                '<div class="order-meta">사이즈 ' + o.size + ' · ' + formatTime(o.created_at) +
+                  ' · ' + (o.paid ? "입금완료" : "미입금") + '</div>' +
+              '</div>' +
+              '<button class="btn btn-sm btn-danger" onclick="askDelete(\'' + o.id + '\')">삭제</button>' +
+            '</div>'
+          ).join("");
+        }
+        const trash = await fetchTrashOrders();
+        statsEl.innerHTML =
+          '<div class="stat"><div class="num">' + orders.length + '</div><div class="label">주문</div></div>' +
+          '<div class="stat"><div class="num">' + trash.length + '</div><div class="label">휴지통</div></div>';
+      } else {
+        const trash = await fetchTrashOrders();
+        if (trash.length === 0) {
+          listEl.innerHTML = '<div class="empty">휴지통이 비어 있습니다</div>';
+        } else {
+          listEl.innerHTML = trash.map(o =>
+            '<div class="order-item">' +
+              '<div class="order-info">' +
+                '<div class="order-name">' + escapeHtml(o.name) + '</div>' +
+                '<div class="order-meta">사이즈 ' + o.size + ' · ' + formatTime(o.created_at) + '</div>' +
+              '</div>' +
+              '<button class="btn btn-sm btn-recover" onclick="recoverOrder(\'' + o.id + '\')">복구</button>' +
+            '</div>'
+          ).join("");
+        }
+        statsEl.innerHTML =
+          '<div class="stat"><div class="num">' + trash.length + '</div><div class="label">휴지통</div></div>';
+      }
+    }
+
+    function askDelete(id) {
+      pendingDeleteId = id;
+      document.getElementById("confirmModal").classList.remove("hidden");
+      document.getElementById("confirmDeleteBtn").onclick = function () {
+        doDelete(pendingDeleteId);
+        closeModal();
+      };
+    }
+
+    function closeModal() {
+      document.getElementById("confirmModal").classList.add("hidden");
+      pendingDeleteId = null;
+    }
+
+    async function doDelete(id) {
+      if (!supabase) return;
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          deleted: true,
+          deleted_at: new Date().toISOString()
+        })
+        .eq("id", id);
+      if (error) {
+        showToast("삭제 실패", true);
+        return;
+      }
+      showToast("휴지통으로 이동되었습니다");
+      renderAdminList();
+    }
+
+    async function recoverOrder(id) {
+      if (!supabase) return;
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          deleted: false,
+          deleted_at: null
+        })
+        .eq("id", id);
+      if (error) {
+        showToast("복구 실패", true);
+        return;
+      }
+      showToast("주문이 복구되었습니다");
+      renderAdminList();
+    }
+
+    // ---------- 초기화 ----------
+    initSizeSelect();
+    const ok = initSupabase();
+    if (ok) {
+      // 엔터키 로그인
+      document.getElementById("adminPw").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") adminLogin();
+      });
+    }
+  </script>
 </body>
 </html>
