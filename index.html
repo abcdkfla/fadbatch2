@@ -29,13 +29,13 @@
         <form id="setup" class="card">
           <h2 class="panel-title">운전 설계 <span>6개 변수</span></h2>
           <label>목표 비성장속도 (h⁻¹)<select id="mu" aria-describedby="mu-help"></select></label>
-          <p id="mu-help" class="t-secondary">첫 공급 이후 비성장속도 상한입니다. 산소나 글루코스가 부족하면 더 낮아집니다.</p>
+          <p id="mu-help" class="t-secondary">0시간부터 목표 비성장속도를 적용합니다. 산소나 기질이 부족해 목표를 유지할 수 없으면 종료합니다.</p>
           <label>교반 (rpm)<select id="rpm"></select></label>
           <label>초기 배양 부피 (L)<select id="volume"></select></label>
           <label>공기 통기량 (vvm)<select id="vvm" aria-describedby="air-help"></select></label>
           <p id="air-help" class="t-secondary">실행 중 vvm은 일정하며, 공기 유량(L/min)은 vvm × 현재 부피(L)입니다.</p>
-          <label>공급액 글루코스 (g/L)<input id="feed" type="number" min="5" max="800" step="any" value="100" required aria-describedby="feed-help"></label>
-          <p id="feed-help" class="t-secondary">기본 100 g/L · 5 초과~800 g/L 직접 입력. 실행 중 농도는 고정하며, 혼합 후 배양기 내부는 50 g/L를 넘지 않도록 제한합니다.</p>
+          <label>공급액 글루코스 (g/L)<select id="feed" aria-describedby="feed-help"></select></label>
+          <p id="feed-help" class="t-secondary">기본 100 g/L · 최대 800 g/L · 100 g/L 간격. 혼합 후 배양기 내부 상한은 50 g/L입니다.</p>
           <label>공급 개시 기준 (g/L)<select id="threshold" aria-describedby="threshold-help"></select></label>
           <p id="threshold-help" class="t-secondary">잔류 글루코스가 기준 이하이면 공급하고, 기준을 넘으면 멈췄다가 다시 내려오면 재개합니다.</p>
           <button class="btn primary" type="submit">▶ 시뮬레이션 실행</button>
@@ -52,13 +52,13 @@
                 <path d="M35 50h110M90 30v98m-20 0 20 9 20-9M55 175h70M74 30h32V13H74Z" fill="none" stroke="#53777b" stroke-width="4" stroke-linecap="round"/>
               </svg><strong id="vessel-label"></strong>
             </div>
-            <div><h2 class="panel-title">종료 상태</h2><p id="end-info"></p><p class="t-secondary">24시간과 2.5 L 중 먼저 도달한 시점에 종료합니다.</p><p><a href="#explore">공급 개시 조건 비교 →</a></p></div>
+            <div><h2 class="panel-title">종료 상태</h2><p id="end-info"></p><p class="t-secondary">24시간, 2.5 L, 목표 μ 유지 불가 중 먼저 발생한 시점에 종료합니다.</p><p><a href="#explore">공급 개시 조건 비교 →</a></p></div>
           </article>
         </div>
       </div>
     </section>
     <section class="section" id="trend" hidden>
-      <div class="section-head"><h1>배양 추세</h1><p>첫 공급 전에는 기존 성장 모델을 사용하고, 첫 공급 이후에는 설정한 μ를 넘지 않습니다.</p></div>
+      <div class="section-head"><h1>배양 추세</h1><p>0시간부터 목표 μ를 적용합니다. 마지막 점에는 종료 시점의 모델 계산값을 표시합니다.</p></div>
       <article class="card"><div class="design-toolbar"><label>표시 변수 <select id="series"></select></label><output id="point"></output></div>
         <svg id="graph" viewBox="0 0 880 340" role="img" aria-label="배양 시간에 따른 선택 지표 변화"></svg>
         <label class="time-control">조회 시간 <input id="time" type="range" min="0" max="24" value="0"></label>
@@ -76,7 +76,7 @@
       <div class="section-head"><h1>수식·고정값</h1><p>계산에 쓰는 식과 참고 전용 값을 구분했습니다.</p></div>
       <article class="card"><h2 class="panel-title">균주·장비 고정값</h2><div class="tablewrap"><table><thead><tr><th>항목</th><th>값</th><th>적용</th></tr></thead><tbody id="constants"></tbody></table></div></article>
       <article class="card formulas"><h2 class="panel-title">모델에 사용하는 식</h2>
-        <p><b>성장·기질:</b> μ<sub>Monod</sub> = μ<sub>max</sub>·S/(K<sub>S</sub>+S). 첫 공급 이후 μ = min(μ<sub>Monod</sub>, μ<sub>set</sub>, μ<sub>산소 한도</sub>). 공급 전에는 μ<sub>set</sub> 상한을 적용하지 않습니다. q<sub>S</sub> = μ/Y + m<sub>S</sub></p>
+        <p><b>성장·기질:</b> μ<sub>Monod</sub> = μ<sub>max</sub>·S/(K<sub>S</sub>+S). 0시간부터 μ = min(μ<sub>Monod</sub>, μ<sub>set</sub>, μ<sub>산소 한도</sub>). 목표 μ를 유지할 수 없는 첫 계산점에서 종료합니다. q<sub>S</sub> = μ/Y + m<sub>S</sub></p>
         <p><b>산소 전달:</b> P₀ = NₚρN³d⁵n, P<sub>g</sub> = 0.5P₀, v<sub>s</sub> = Q/A, k<sub>L</sub>a = 0.026(P<sub>g</sub>/V)<sup>0.4</sup>v<sub>s</sub><sup>0.5</sup> (s⁻¹), OTR = k<sub>L</sub>a(C*−C)</p>
         <p><b>산소 제한:</b> OUR ≈ 12q<sub>S</sub>X. OTR 상한(k<sub>L</sub>a·C*, 단위 환산 후)을 넘지 않도록 μ와 소비량을 제한합니다. DO는 정상상태 근사입니다.</p>
         <p><b>공급 제어:</b> S ≤ S<sub>전환</sub>이면 F<sub>s</sub> = (μ<sub>set</sub>/Y + m<sub>S</sub>)·XV/(c<sub>S</sub>−S<sub>전환</sub>), 아니면 F<sub>s</sub> = 0. 공급액 농도 c<sub>S</sub>는 실행 중 고정합니다.</p>
