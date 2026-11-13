@@ -1,579 +1,593 @@
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#FEE500" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>👟 신발 주문서</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root {
-      --bg: #f5f5f5;
-      --card: #ffffff;
-      --kakao: #FEE500;
-      --kakao-dark: #3C1E1E;
-      --primary: #191919;
-      --green: #16a34a;
-      --red: #dc2626;
-      --orange: #ea580c;
-      --gray: #6b7280;
-      --border: #e5e7eb;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
-      background: var(--bg);
-      color: var(--primary);
-      line-height: 1.5;
-      min-height: 100vh;
-      padding-bottom: 40px;
-    }
-    .account-bar {
-      background: var(--kakao);
-      color: var(--kakao-dark);
-      text-align: center;
-      padding: 14px 16px;
-      font-weight: 700;
-      font-size: 1.05rem;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .account-bar small {
-      display: block;
-      font-size: 0.8rem;
-      font-weight: 600;
-      opacity: 0.8;
-      margin-bottom: 2px;
-    }
-    .container { max-width: 480px; margin: 0 auto; padding: 16px; }
-    h1 { font-size: 1.4rem; text-align: center; margin: 16px 0 20px; }
-    .tabs { display: flex; gap: 6px; margin-bottom: 20px; }
-    .tab {
-      flex: 1; padding: 11px 6px; border: none; border-radius: 10px;
-      font-size: 0.88rem; font-weight: 600; cursor: pointer;
-      background: #e5e7eb; color: #374151;
-    }
-    .tab.active { background: var(--primary); color: white; }
-    .card {
-      background: var(--card); border-radius: 14px; padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 16px;
-    }
-    label {
-      display: block; font-size: 0.9rem; font-weight: 600;
-      margin-bottom: 6px; color: #374151;
-    }
-    input[type="text"], input[type="password"], select {
-      width: 100%; padding: 14px 12px; border: 1.5px solid var(--border);
-      border-radius: 10px; font-size: 1rem; margin-bottom: 16px; background: #fafafa;
-    }
-    input:focus, select:focus { outline: none; border-color: #3b82f6; background: white; }
-    .btn {
-      width: 100%; padding: 14px; border: none; border-radius: 10px;
-      font-size: 1rem; font-weight: 700; cursor: pointer;
-    }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:active { opacity: 0.85; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-danger { background: var(--red); color: white; }
-    .btn-recover { background: var(--orange); color: white; font-size: 0.85rem; padding: 8px 12px; width: auto; }
-    .btn-sm { padding: 8px 12px; font-size: 0.85rem; width: auto; border-radius: 8px; }
-    .filter-row { display: flex; gap: 6px; margin-bottom: 14px; }
-    .filter-btn {
-      flex: 1; padding: 10px 6px; border: 1.5px solid var(--border);
-      border-radius: 8px; background: white; font-size: 0.85rem;
-      font-weight: 600; cursor: pointer;
-    }
-    .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-    .order-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 14px 0; border-bottom: 1px solid var(--border);
-    }
-    .order-item:last-child { border-bottom: none; }
-    .order-item input[type="checkbox"] {
-      width: 22px; height: 22px; accent-color: var(--green); flex-shrink: 0;
-    }
-    .order-info { flex: 1; min-width: 0; }
-    .order-name { font-weight: 700; font-size: 1rem; }
-    .order-meta { font-size: 0.8rem; color: var(--gray); margin-top: 2px; }
-    .badge {
-      font-size: 0.75rem; padding: 3px 8px; border-radius: 20px;
-      font-weight: 600; flex-shrink: 0;
-    }
-    .badge.paid { background: #dcfce7; color: #166534; }
-    .badge.unpaid { background: #fee2e2; color: #991b1b; }
-    .stats { display: flex; gap: 10px; margin-top: 16px; }
-    .stat {
-      flex: 1; text-align: center; background: #f9fafb;
-      padding: 12px 8px; border-radius: 10px;
-    }
-    .stat .num { font-size: 1.3rem; font-weight: 700; }
-    .stat .label { font-size: 0.75rem; color: var(--gray); }
-    .empty { text-align: center; color: var(--gray); padding: 40px 20px; font-size: 0.95rem; }
-    .toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: #166534; color: white; padding: 12px 24px; border-radius: 30px;
-      font-weight: 600; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s;
-      z-index: 200; pointer-events: none; white-space: nowrap;
-    }
-    .toast.show { opacity: 1; }
-    .toast.error { background: #991b1b; }
-    .hidden { display: none; }
-    .login-box { text-align: center; }
-    .login-box p { color: var(--gray); font-size: 0.9rem; margin-bottom: 16px; }
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 300; padding: 20px;
-    }
-    .modal {
-      background: white; border-radius: 16px; padding: 24px;
-      max-width: 340px; width: 100%; text-align: center;
-    }
-    .modal h3 { font-size: 1.1rem; margin-bottom: 8px; }
-    .modal p { color: var(--gray); font-size: 0.9rem; margin-bottom: 20px; }
-    .modal-btns { display: flex; gap: 10px; }
-    .modal-btns button {
-      flex: 1; padding: 12px; border: none; border-radius: 10px;
-      font-weight: 700; font-size: 0.95rem; cursor: pointer;
-    }
-    .modal-cancel { background: #e5e7eb; color: #374151; }
-    .modal-confirm { background: var(--red); color: white; }
-    .config-warn {
-      background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;
-      padding: 12px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 16px;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="C. glutamicum Fed-batch 운전 조건 비교용 교육 시뮬레이터">
+<title>Fed-Batch Lab | 배양 워크스테이션</title>
+<style>
+:root {
+  color-scheme: light;
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-text: #1F2937;
+  --color-text-secondary: #6B7280;
+  --color-border: #E5E7EB;
+  --color-bg: #FFFFFF;
+  --color-bg-subtle: #F9FAFB;
+  --color-danger: #DC2626;
+  --color-warn: #B45309;
+  --color-warn-bg: #FFFBEB;
+  --color-success: #16A34A;
+  --font-body: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-body);
+  font-size: 16px; line-height: 1.6; }
+.container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+h1 { font-size: 30px; font-weight: 700; line-height: 1.3; margin: 0; text-wrap: balance; }
+h2 { font-size: 23px; font-weight: 700; line-height: 1.3; margin: 0; text-wrap: balance; }
+h3 { font-size: 18px; font-weight: 600; line-height: 1.4; margin: 0; }
+h4 { font-size: 14px; font-weight: 600; line-height: 1.4; margin: 0; }
+p { margin: 0; }
+.t-secondary { font-size: 14px; line-height: 1.5; color: var(--color-text-secondary); }
+.t-caption { font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--color-text-secondary); }
+
+.site-header { height: 64px; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; z-index: 30; background: var(--color-bg); }
+.site-header .container { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { font-size: 19px; font-weight: 600; }
+.site-footer { border-top: 1px solid var(--color-border); padding: 24px 0; margin-top: 72px; }
+
+main { padding-top: 40px; display: flex; flex-direction: column; gap: 64px; }
+.section { display: flex; flex-direction: column; gap: 20px; }
+.section-head { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+
+.card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; padding: 20px; }
+.card-stack { display: flex; flex-direction: column; gap: 14px; }
+
+.workbench { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 24px; align-items: start; }
+.sidebar { display: flex; flex-direction: column; gap: 12px; }
+
+/* 파라미터 그룹 */
+.pgroup { border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-bg); }
+.pgroup > summary { cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 600; list-style: none; }
+.pgroup > summary::-webkit-details-marker { display: none; }
+.pgroup > summary::before { content: '▸'; color: var(--color-text-secondary); font-size: 12px; }
+.pgroup[open] > summary::before { content: '▾'; }
+.pgroup > summary .gtag { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 999px;
+  background: var(--color-bg-subtle); color: var(--color-text-secondary); border: 1px solid var(--color-border); margin-left: auto; }
+.pgroup.assume > summary .gtag { background: var(--color-warn-bg); color: var(--color-warn); border-color: #FDE68A; }
+.pbody { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13.5px; }
+.field-label .hint { font-size: 11.5px; color: var(--color-text-secondary); }
+.field-row { display: flex; align-items: center; gap: 10px; }
+input[type="range"] { flex: 1; min-width: 0; height: 32px; margin: 0; accent-color: var(--color-primary); cursor: pointer; }
+input[type="number"], select { height: 36px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px;
+  background: var(--color-bg); color: var(--color-text); font-family: inherit; font-size: 14px; }
+input[type="number"] { width: 84px; font-variant-numeric: tabular-nums; }
+select { width: 100%; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); }
+.seg.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+.seg.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { height: 34px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer;
+  background: var(--color-bg); font-variant-numeric: tabular-nums; text-align: center; }
+.seg label:hover { border-color: var(--color-primary); }
+.seg input:disabled + label { color: var(--color-text-secondary); background: var(--color-bg-subtle); cursor: not-allowed; }
+.seg input:checked + label { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.seg input:focus-visible + label { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+.btn { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--color-border);
+  background: var(--color-bg); color: var(--color-text); font-family: inherit; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--color-primary); color: var(--color-primary-hover); }
+.btn.primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.btn.primary:hover { background: var(--color-primary-hover); color: #fff; }
+.btn.sm { height: 30px; padding: 0 10px; font-size: 12px; }
+.btn.icon { width: 38px; padding: 0; font-size: 15px; }
+
+/* 재생 바 */
+.player { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px;
+  border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-bg-subtle); }
+.player .clock { font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 600; min-width: 86px; }
+.scrub { flex: 1 1 220px; min-width: 160px; }
+.phase-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
+.phase-batch { color: #6D28D9; } .phase-feed { color: var(--color-primary); }
+.phase-lim { color: var(--color-danger); } .phase-done { color: var(--color-text-secondary); }
+
+/* 반응기 + 지표 */
+.live-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+.reactor-wrap { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+#reactor { width: 100%; max-width: 280px; height: auto; display: block; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.tile .k { font-size: 11.5px; color: var(--color-text-secondary); font-weight: 500; }
+.tile .v { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.tile .u { font-size: 11px; color: var(--color-text-secondary); }
+.tile.alarm { border-color: var(--color-danger); background: #FEF2F2; }
+.tile.alarm .v { color: var(--color-danger); }
+
+.result-list { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.result-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.result-row dt { font-size: 13.5px; color: var(--color-text-secondary); }
+.result-row dd { margin: 0; font-size: 15px; text-align: right; font-variant-numeric: tabular-nums; }
+.divider { height: 1px; background: var(--color-border); border: 0; margin: 0; }
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px;
+  font-size: 11.5px; font-weight: 500; border: 1px solid currentColor; white-space: nowrap; }
+.pill.ok { color: var(--color-success); } .pill.bad { color: var(--color-danger); } .pill.warn { color: var(--color-warn); }
+.verdict { display: flex; flex-direction: column; gap: 8px; }
+.verdict-row { display: flex; align-items: flex-start; gap: 8px; }
+.verdict-row p { font-size: 13.5px; line-height: 1.5; }
+
+/* 경고 */
+.alertbox { border: 1px solid #FDE68A; background: var(--color-warn-bg); border-radius: 10px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 6px; }
+.alertbox h4 { color: var(--color-warn); }
+.alertbox p { font-size: 13.5px; line-height: 1.55; color: #78350F; }
+
+/* 그래프 */
+.chart-key { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.key-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
+.key-line { width: 16px; height: 0; border-top: 2px solid var(--color-primary); }
+.key-line.ref { border-top-color: var(--color-text-secondary); }
+.key-line.ref2 { border-top: 2px dashed var(--color-warn); }
+.key-line.mark { width: 0; height: 14px; border-top: 0; border-left: 1px solid var(--color-text); }
+.key-band { width: 16px; height: 11px; background: var(--color-danger); opacity: 0.12; }
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+.chart-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; }
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.chart-title { font-size: 14.5px; font-weight: 500; }
+.chart-readout { font-size: 13px; color: var(--color-text-secondary); text-align: right; font-variant-numeric: tabular-nums; }
+.chart-readout strong { color: var(--color-text); font-weight: 600; }
+.chart-svg { display: block; width: 100%; height: 190px; touch-action: pan-y; }
+.chart-svg text { font-family: var(--font-body); font-size: 11px; font-weight: 500; fill: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+
+.view-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+.filter-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.opt-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; align-items: start; }
+.rank-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.rank-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.rank-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; }
+.current-condition { border-left: 3px solid var(--color-primary); }
+.current-condition .result-list { max-width: 720px; }
+.heat-table { min-width: 720px; table-layout: fixed; }
+.heat-table th, .heat-table td { padding: 3px; border-bottom: 0; text-align: center; }
+.heat-table th.row-head { width: 60px; text-align: left; }
+.heat-cell { width: 100%; height: 30px; padding: 0 3px; border: 0; border-radius: 7px; cursor: pointer;
+  font-family: inherit; font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--color-text); }
+.heat-cell.dark { color: #fff; }
+.heat-cell.best { outline: 2px solid var(--color-text); }
+.heat-cell:hover, .heat-cell:focus-visible { outline: 2px solid var(--color-primary-hover); }
+
+.table-wrap { overflow-x: auto; max-height: 460px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--color-border); text-align: left; vertical-align: top; }
+thead th { position: sticky; top: 0; background: var(--color-bg); z-index: 1; font-size: 11.5px; font-weight: 500;
+  color: var(--color-text-secondary); white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.now td { background: #EFF6FF; }
+.formula { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-tools { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.ref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.note-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 7px; font-size: 13.5px; line-height: 1.55; }
+details.plain > summary { cursor: pointer; font-size: 15px; }
+details.plain[open] > summary { margin-bottom: 14px; }
+
+@media (max-width: 1100px) { .workbench { grid-template-columns: minmax(0,1fr); } .sidebar { position: static; } }
+@media (max-width: 900px) { .live-grid, .opt-grid { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 767px) { .container { padding: 0 16px; } h1 { font-size: 25px; } main { gap: 44px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+</style>
+<style>
+:root {
+  --color-primary: #14736b;
+  --color-primary-hover: #0e5853;
+  --color-text: #182d36;
+  --color-text-secondary: #536772;
+  --color-border: #dce5e8;
+  --color-bg: #fff;
+  --color-bg-subtle: #f3f7f7;
+  --color-danger: #a82d39;
+  --color-warn: #8a5a17;
+  --color-warn-bg: #fbf7ed;
+  --color-success: #176c59;
+  --font-body: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --rail-width: 204px;
+  --gutter: 28px;
+}
+body { background:#edf2f3; font-size:14px; line-height:1.55; letter-spacing:-.012em; }
+button,input,select { font-variant-numeric:tabular-nums; }
+a { color:var(--color-primary); }
+a:focus-visible { outline:2px solid #55b7a6; outline-offset:3px; }
+.rail { position:fixed; inset:0 auto 0 0; width:var(--rail-width); background:#142d37; display:flex; flex-direction:column; overflow:auto; color:#fff; z-index:4; }
+.rail .brand { display:flex; align-items:center; gap:10px; padding:20px 16px; color:#f0faf9; font-size:15px; font-weight:700; text-decoration:none; white-space:nowrap; }
+.brand-mark { display:grid; place-items:center; width:30px; height:30px; flex:none; border:1px solid #47716f; border-radius:6px; color:#a7dfd4; }
+.brand-mark svg { width:21px; height:21px; }
+.rail nav { display:grid; gap:4px; padding:8px 10px; }
+.rail nav a { display:flex; align-items:center; gap:10px; min-height:40px; padding:8px 10px; border:1px solid transparent; border-radius:5px; font-size:13px; font-weight:550; text-decoration:none; color:#c6d7dc; }
+.rail nav svg { flex:none; width:18px; height:18px; }
+.rail nav a:hover { background:#203e49; color:#fff; }
+.rail nav a[aria-current="page"] { background:#24474d; border-color:#396363; color:#effbf8; font-weight:700; }
+.rail nav a[aria-current="page"] svg { color:#97dfcf; }
+.sidefoot { margin:auto 16px 0; padding:16px 0; border-top:1px solid #34505a; font-size:11px; color:#b0c5cb; }
+.shell { margin-left:var(--rail-width); min-height:100vh; display:flex; flex-direction:column; }
+.shell > header { min-height:62px; background:#fff; border-bottom:1px solid var(--color-border); display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px var(--gutter); }
+.shell > header strong { font-size:15px; font-weight:700; }
+.badge { display:inline-flex; align-items:center; gap:7px; color:#355963; background:#f0f6f6; border:1px solid #dae8e9; border-radius:4px; padding:5px 8px; font-size:12px; white-space:nowrap; }
+.badge::before { content:''; width:6px; height:6px; border-radius:50%; background:#348378; }
+.batchbar { display:flex; gap:18px; align-items:center; padding:12px var(--gutter); border-bottom:1px solid var(--color-border); background:#f9fbfb; }
+.vesselchip { color:var(--color-primary); font-size:18px; font-weight:750; padding-right:16px; border-right:1px solid var(--color-border); white-space:nowrap; }
+.batchbar small { font-size:11px; color:var(--color-text-secondary); font-weight:500; }
+.strain-chip { display:grid; gap:1px; white-space:nowrap; font-size:12px; }
+.batchbar .player { flex:1; min-width:0; border:0; padding:0; background:none; gap:8px; }
+.batchbar .clock { min-width:62px; font-size:15px; }
+.batchbar .scrub { flex-basis:90px; min-width:70px; }
+.player .seg { gap:4px; }
+.player .seg label { min-width:34px; padding:0 6px; }
+.phase-badge { border-radius:4px; }
+.phase-batch { color:#3d5d72; background:#edf4f8; }
+.phase-feed { background:#e7f3ef; }
+.phase-lim { background:#f9edef; }
+.shell main { width:100%; max-width:1760px; margin:0 auto; padding:24px var(--gutter) 48px; flex:1; }
+.shell main > section[hidden] { display:none; }
+.section { gap:16px; }
+.section-head { max-width:none; gap:4px; margin-bottom:2px; }
+.section-head h1,.section-head h2 { font-size:26px; font-weight:720; letter-spacing:-.045em; }
+.section-head p { font-size:13px; color:var(--color-text-secondary); }
+.workbench { grid-template-columns:minmax(265px, 300px) minmax(0, 1fr); gap:16px; }
+.sidebar,.card-stack { gap:12px; min-width:0; }
+.card,.pgroup { border-radius:7px; min-width:0; }
+.card { padding:16px; }
+.comparison-export { display:flex; flex-direction:column; align-items:flex-start; gap:8px; }
+.comparison-export p + p { margin-top:4px; }
+.comparison-export #compare-status { min-height:18px; }
+.pgroup > summary { padding:12px 14px; border-radius:6px; background:#f8fafa; font-size:14px; }
+.pgroup[open] > summary { margin-bottom:12px; border-radius:6px 6px 0 0; border-bottom:1px solid var(--color-border); }
+.pgroup .pbody { gap:12px; padding:0 14px 14px; }
+[hidden] { display:none !important; }
+.design-group > summary { background:#e8f3f0; color:#135e55; }
+.design-count { margin-left:auto; font-size:11px; font-weight:600; white-space:nowrap; }
+.field-label { font-size:13px; font-weight:570; }
+.field-label .hint { font-size:11px; font-weight:500; }
+.design-group .field-label .hint { white-space:nowrap; }
+.design-stepper { display:grid; grid-template-columns:40px minmax(0,1fr) 40px; gap:6px; }
+.design-stepper .design-step { height:38px; padding:0; font-size:17px; font-weight:600; }
+.design-stepper .design-step:disabled { opacity:.4; cursor:not-allowed; }
+.design-stepper input { height:38px; width:100%; text-align:center; appearance:textfield; }
+.design-stepper input::-webkit-inner-spin-button,.design-stepper input::-webkit-outer-spin-button { appearance:none; margin:0; }
+.btn,.seg label,input[type=number],select { border-radius:5px; }
+.btn,.seg label { font-size:13px; font-weight:560; }
+.btn.primary { font-weight:700; }
+.btn.sm { font-size:12px; }
+.over-limit { color:var(--color-danger); font-weight:700; }
+.overview-results { grid-template-columns:minmax(160px,.56fr) minmax(0,1fr); gap:16px; }
+.panel-title { width:100%; display:flex; justify-content:space-between; align-items:center; gap:8px; margin:0; font-size:14px; font-weight:700; }
+.panel-title span { color:var(--color-primary); background:#e9f3f1; padding:2px 7px; border-radius:4px; font-size:11px; }
+.reactor-wrap { gap:18px; }
+#reactor { font-family:var(--font-body); max-width:272px; }
+.tiles { grid-template-columns:repeat(auto-fit,minmax(94px,1fr)); gap:8px; }
+.tile { border-radius:5px; background:#f5f8f8; padding:8px 10px; }
+.tile .k,.tile .u { font-size:11px; }
+.tile .v { font-size:19px; color:#153e42; }
+.tile.alarm { background:#fbf0f1; }
+.result-row { gap:10px; }
+.result-row dt { font-size:12px; }
+.result-row dd { font-size:13px; font-weight:600; }
+.alertbox { padding:9px 11px; border-color:#e6d5b3; border-radius:5px; }
+.alertbox p,.verdict-row p { font-size:12px; }
+.trend-toolbar { min-height:52px; border:1px solid var(--color-border); border-radius:6px; background:#fff; padding:8px 12px; }
+.trend-time { margin-left:auto; display:flex; gap:8px; align-items:center; color:var(--color-text-secondary); font-size:12px; }
+.trend-time output { color:#12564e; font-size:14px; font-weight:720; font-variant-numeric:tabular-nums; }
+.chart-key { gap:12px; padding:0 2px; }
+.chart-grid,.ref-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,318px),1fr)); }
+.chart-card { gap:8px; }
+.chart-title { font-size:13px; font-weight:700; }
+.chart-readout { font-size:12px; }
+.chart-readout strong { font-size:15px; }
+.chart-svg { height:208px; cursor:crosshair; touch-action:pan-y; user-select:none; }
+table { font-size:13px; font-variant-numeric:tabular-nums; }
+thead th { background:#f3f7f7; color:#46616c; font-weight:650; }
+tr.now td { background:#e3f3ef; }
+@media (max-width:1280px) { .batchbar { flex-wrap:wrap; } .batchbar .player { flex-basis:100%; } }
+@media (max-width:1100px) { .overview-results { grid-template-columns:minmax(0,1fr); } }
+@media (max-width:920px) { :root { --rail-width:148px; --gutter:16px; } .rail .brand { padding:16px 8px; gap:6px; font-size:13px; } .rail nav { padding:6px; } .rail nav a { gap:6px; } }
+@media (max-width:720px) {
+  :root { --rail-width:68px; --gutter:12px; }
+  .rail .brand { justify-content:center; }
+  .rail .brand > span:last-child,.sidefoot { display:none; }
+  .rail nav a { flex-direction:column; gap:3px; padding:7px 2px; font-size:10px; text-align:center; }
+  .workbench,.opt-grid { grid-template-columns:minmax(0,1fr); }
+  .section-head h1,.section-head h2 { font-size:22px; }
+  .shell > header { flex-wrap:wrap; }
+  .trend-time { margin-left:0; }
+}
+
+</style>
+<style>
+#setup {display:grid;gap:12px;align-content:start}
+#setup label,.time-control {display:grid;gap:4px;color:var(--color-text-secondary)}
+#setup select,#setup input {width:100%}
+#run-status {font-size:12px;color:var(--color-danger)}
+.design-overview {display:grid;align-items:center}
+.design-overview p,.formulas p {margin-top:12px}
+.vessel-view {text-align:center}
+.vessel-view svg {width:100%;max-width:180px;display:block;margin:auto}
+.design-toolbar {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.design-toolbar .panel-title {width:auto}
+#graph {display:block;width:100%;touch-action:pan-y}
+.time-control input {width:100%;accent-color:var(--color-primary)}
+#best {margin:10px 0;color:var(--color-primary);font-weight:650}
+#metrics {margin-top:12px}
+td,th {font-variant-numeric:tabular-nums}
+
+</style>
+
+
 </head>
 <body>
-
-  <div class="account-bar">
-    <small>💰 입금계좌</small>
-    카카오뱅크 3333132319780
-  </div>
-
-  <div class="container">
-    <h1>👟 신발 주문서</h1>
-
-    <div id="configWarn" class="config-warn hidden">
-      ⚠️ Supabase URL / Key가 설정되지 않았습니다.<br>
-      HTML 파일 상단 스크립트의 SUPABASE_URL, SUPABASE_ANON_KEY를 채워주세요.
-    </div>
-
-    <div class="tabs">
-      <button class="tab active" id="tabBtn-order" onclick="showTab('order')">📝 주문하기</button>
-      <button class="tab" id="tabBtn-list" onclick="showTab('list')">📋 주문목록</button>
-      <button class="tab" id="tabBtn-admin" onclick="showTab('admin')">🔐 관리자</button>
-    </div>
-
-    <!-- 주문하기 -->
-    <div id="tab-order">
-      <div class="card">
-        <label for="name">이름</label>
-        <input type="text" id="name" placeholder="홍길동" maxlength="20" />
-        <label for="size">신발 사이즈</label>
-        <select id="size"></select>
-        <button class="btn btn-primary" id="submitBtn" onclick="submitOrder()">주문 제출하기</button>
-      </div>
-    </div>
-
-    <!-- 주문목록 -->
-    <div id="tab-list" class="hidden">
-      <div class="filter-row">
-        <button class="filter-btn active" onclick="setFilter('all', this)">전체</button>
-        <button class="filter-btn" onclick="setFilter('paid', this)">입금완료</button>
-        <button class="filter-btn" onclick="setFilter('unpaid', this)">미입금</button>
-      </div>
-      <div class="card" id="orderList"></div>
-      <div class="stats" id="stats"></div>
-    </div>
-
-    <!-- 관리자 -->
-    <div id="tab-admin" class="hidden">
-      <div class="card login-box" id="adminLogin">
-        <p>관리자만 접근할 수 있습니다</p>
-        <label for="adminPw">비밀번호</label>
-        <input type="password" id="adminPw" placeholder="비밀번호 입력" />
-        <button class="btn btn-primary" onclick="adminLogin()">로그인</button>
-      </div>
-
-      <div id="adminPanel" class="hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-          <strong>관리자 모드</strong>
-          <button class="btn btn-sm" style="background:#e5e7eb; color:#374151;" onclick="adminLogout()">로그아웃</button>
+<aside class="rail">
+  <a class="brand" href="#overview"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65"><path d="M7 7h10v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM9 4h6m-3 0v12M9 15l3 1 3-1M5 11h2m10 0h2"/></svg></span>Fed-Batch Lab</a>
+  <nav aria-label="주 메뉴">
+    <a href="#overview">배양 개요</a><a href="#trend">배양 추세</a><a href="#explore">조건 탐색</a><a href="#data">시간별 데이터</a><a href="#formula">수식·고정값</a><a href="#sources">논문 출처</a>
+  </nav>
+  <div class="sidefoot">공정 시뮬레이터</div>
+</aside>
+<div class="shell">
+  <header><strong>배양 워크스테이션</strong><div class="badge">시뮬레이션 모드</div></header>
+  <div class="batchbar"><div class="vesselchip">V1 <small>단일 반응기</small></div><div class="strain-chip"><small>균주</small><strong><i>C. glutamicum</i> ATCC 13032</strong></div><small>ARA G-FLD 5 L · 작업 상한 2.5 L</small></div>
+  <main>
+    <section class="section" id="overview">
+      <div class="section-head"><h1>배양 개요</h1><p>운전 변수 6개 · 최대 24시간 · 30분 간격</p></div>
+      <div class="workbench">
+        <form id="setup" class="card">
+          <h2 class="panel-title">운전 설계 <span>6개 변수</span></h2>
+          <label>목표 비성장속도 (h⁻¹)<select id="mu" aria-describedby="mu-help"></select></label>
+          <p id="mu-help" class="t-secondary">0시간부터 목표 비성장속도를 적용합니다. 산소나 기질이 부족해 목표를 유지할 수 없으면 종료합니다.</p>
+          <label>교반 (rpm)<select id="rpm"></select></label>
+          <label>초기 배양 부피 (L)<select id="volume"></select></label>
+          <label>공기 통기량 (vvm)<select id="vvm" aria-describedby="air-help"></select></label>
+          <p id="air-help" class="t-secondary">실행 중 vvm은 일정하며, 공기 유량(L/min)은 vvm × 현재 부피(L)입니다.</p>
+          <label>공급액 글루코스 (g/L)<select id="feed" aria-describedby="feed-help"><option value="100" selected>100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option><option value="600">600</option><option value="700">700</option><option value="800">800</option></select></label>
+          <p id="feed-help" class="t-secondary">기본 100 g/L · 최대 800 g/L · 100 g/L 간격. 혼합 후 배양기 내부 상한은 50 g/L입니다.</p>
+          <label>공급 개시 기준 (g/L)<select id="threshold" aria-describedby="threshold-help"></select></label>
+          <p id="threshold-help" class="t-secondary">잔류 글루코스가 기준 이하이면 공급하고, 기준을 넘으면 멈췄다가 다시 내려오면 재개합니다.</p>
+          <button class="btn primary" type="submit">▶ 시뮬레이션 실행</button>
+          <p id="run-status" role="status"></p>
+        </form>
+        <div class="card-stack">
+          <article class="card"><h2 class="panel-title">배양 결과 <span>모델 추정</span></h2><div class="tiles" id="metrics"></div></article>
+          <article class="card overview-results design-overview">
+            <div class="vessel-view">
+              <svg viewBox="0 0 180 190" role="img" aria-label="최종 부피를 나타낸 모의 배양기">
+                <defs><clipPath id="vessel-clip"><path d="M42 50h96v92a25 25 0 0 1-25 25H67a25 25 0 0 1-25-25Z"/></clipPath></defs>
+                <path d="M42 50h96v92a25 25 0 0 1-25 25H67a25 25 0 0 1-25-25Z" fill="#f3f7f7" stroke="#53777b" stroke-width="3"/>
+                <rect id="liquid" x="42" y="167" width="96" height="0" fill="#a5d8c8" clip-path="url(#vessel-clip)"/>
+                <path d="M35 50h110M90 30v98m-20 0 20 9 20-9M55 175h70M74 30h32V13H74Z" fill="none" stroke="#53777b" stroke-width="4" stroke-linecap="round"/>
+              </svg><strong id="vessel-label"></strong>
+            </div>
+            <div><h2 class="panel-title">종료 상태</h2><p id="end-info"></p><p class="t-secondary">24시간, 2.5 L, 목표 μ 유지 불가 중 먼저 발생한 시점에 종료합니다.</p><p><a href="#explore">공급 개시 조건 비교 →</a></p></div>
+          </article>
         </div>
-        <div class="filter-row">
-          <button class="filter-btn active" id="adminFilter-active" onclick="setAdminFilter('active', this)">주문 목록</button>
-          <button class="filter-btn" id="adminFilter-trash" onclick="setAdminFilter('trash', this)">휴지통</button>
-        </div>
-        <div class="card" id="adminList"></div>
-        <div class="stats" id="adminStats"></div>
       </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay hidden" id="confirmModal">
-    <div class="modal">
-      <h3>정말 삭제할까요?</h3>
-      <p>삭제된 주문은 휴지통으로 이동됩니다.<br>나중에 복구할 수 있습니다.</p>
-      <div class="modal-btns">
-        <button class="modal-cancel" onclick="closeModal()">취소</button>
-        <button class="modal-confirm" id="confirmDeleteBtn">삭제</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="toast" id="toast"></div>
-
-  <script>
-    // ============================================================
-    //  1) Supabase 설정 (여기만 채우세요)
-    // ============================================================
-    const SUPABASE_URL = "https://bqcgpqjhbolehpmygzjn.supabase.co";           // 예: https://xxxxx.supabase.co
-    const SUPABASE_ANON_KEY = "sb_publishable_t92k8pK4XBIlEn4M3c9Ahw_3WzmY7oy"; // anon public key
-    // ============================================================
-
-    // ============================================================
-    //  2) 사이즈 설정 (간격 바꾸려면 SIZE_STEP만 수정)
-    // ============================================================
-    const SIZE_MIN  = 200;
-    const SIZE_MAX  = 300;
-    const SIZE_STEP = 5;   // 10으로 바꾸려면 5 → 10
-    // ============================================================
-
-    const ADMIN_PW = "031208";
-    const ADMIN_SESSION = "shoe_admin_logged_in";
-
-    let supabase = null;
-    let currentFilter = "all";
-    let adminFilter = "active";
-    let pendingDeleteId = null;
-
-    // Supabase 초기화
-    function initSupabase() {
-      if (!SUPABASE_URL || SUPABASE_URL.includes("YOUR_") ||
-          !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes("YOUR_")) {
-        document.getElementById("configWarn").classList.remove("hidden");
-        return false;
+    </section>
+    <section class="section" id="trend" hidden>
+      <div class="section-head"><h1>배양 추세</h1><p>0시간부터 목표 μ를 적용합니다. 마지막 점에는 종료 시점의 모델 계산값을 표시합니다.</p></div>
+      <article class="card"><div class="design-toolbar"><label>표시 변수 <select id="series"></select></label><output id="point"></output></div>
+        <svg id="graph" viewBox="0 0 880 340" role="img" aria-label="배양 시간에 따른 선택 지표 변화"></svg>
+        <label class="time-control">조회 시간 <input id="time" type="range" min="0" max="24" value="0"></label>
+      </article>
+    </section>
+    <section class="section" id="explore" hidden>
+      <div class="section-head"><h1>조건 탐색</h1><p>다른 운전 조건을 고정하고, 잔류 글루코스 5·4·3·2·1 g/L에서 공급을 시작했을 때의 겉보기 수율을 비교합니다.</p></div>
+      <article class="card"><h2 class="panel-title">공급 개시 기준 비교</h2><p id="best"></p><div class="tablewrap"><table><thead><tr><th>기준 (g/L)</th><th>실제 개시 (h)</th><th>종료 (h)</th><th>최종 균체량 (g)</th><th>겉보기 수율 (g/g)</th><th>선택</th></tr></thead><tbody id="ranking"></tbody></table></div></article>
+    </section>
+    <section class="section" id="data" hidden>
+      <div class="section-head"><h1>시간별 데이터</h1><p>0시간부터 30분 간격으로 기록합니다. 간격 사이에 종료하면 실제 종료 시각도 기록합니다.</p></div>
+      <article class="card"><div class="design-toolbar"><h2 class="panel-title">시뮬레이션 기록</h2><button id="csv" class="btn">CSV 내려받기</button></div><div class="tablewrap"><table><thead><tr><th>시간 (h)</th><th>균체 (g/L)</th><th>글루코스 (g/L)</th><th>부피 (L)</th><th>μ (h⁻¹)</th><th>DO (%)</th><th>OTR (mmol/L/h)</th><th>kLa (h⁻¹)</th><th>공급 (mL/h)</th></tr></thead><tbody id="samples"></tbody></table></div></article>
+    </section>
+    <section class="section" id="formula" hidden>
+      <div class="section-head"><h1>수식·고정값</h1><p>계산에 쓰는 식과 참고 전용 값을 구분했습니다.</p></div>
+      <article class="card"><h2 class="panel-title">균주·장비 고정값</h2><div class="tablewrap"><table><thead><tr><th>항목</th><th>값</th><th>적용</th></tr></thead><tbody id="constants"></tbody></table></div></article>
+      <article class="card formulas"><h2 class="panel-title">모델에 사용하는 식</h2>
+        <p><b>성장·기질:</b> μ<sub>Monod</sub> = μ<sub>max</sub>·S/(K<sub>S</sub>+S). 0시간부터 μ = min(μ<sub>Monod</sub>, μ<sub>set</sub>, μ<sub>산소 한도</sub>). 목표 μ를 유지할 수 없는 첫 계산점에서 종료합니다. q<sub>S</sub> = μ/Y + m<sub>S</sub></p>
+        <p><b>산소 전달:</b> P₀ = NₚρN³d⁵n, P<sub>g</sub> = 0.5P₀, v<sub>s</sub> = Q/A, k<sub>L</sub>a = 0.026(P<sub>g</sub>/V)<sup>0.4</sup>v<sub>s</sub><sup>0.5</sup> (s⁻¹), OTR = k<sub>L</sub>a(C*−C)</p>
+        <p><b>산소 제한:</b> OUR ≈ 12q<sub>S</sub>X. OTR 상한(k<sub>L</sub>a·C*, 단위 환산 후)을 넘지 않도록 μ와 소비량을 제한합니다. DO는 정상상태 근사입니다.</p>
+        <p><b>공급 제어:</b> S ≤ S<sub>전환</sub>이면 F<sub>s</sub> = (μ<sub>set</sub>/Y + m<sub>S</sub>)·XV/(c<sub>S</sub>−S<sub>전환</sub>), 아니면 F<sub>s</sub> = 0. 공급액 농도 c<sub>S</sub>는 실행 중 고정합니다.</p>
+        <p><b>겉보기 수율:</b> (최종 균체량 − 초기 균체량) ÷ 누적 소비 글루코스. 최종 균체량과는 다른 지표입니다.</p>
+      </article>
+      <article class="card formulas"><h2 class="panel-title">Fed-batch 부피·희석 수지</h2>
+        <p><b>부피:</b> dV/dt = F<sub>s</sub></p>
+        <p><b>균체 농도:</b> dX/dt = μ·X − (X/V)·dV/dt</p>
+        <p><b>글루코스 농도:</b> dS/dt = −q<sub>s</sub>·X + F<sub>s</sub>·c<sub>s</sub>/V − (S/V)·dV/dt</p>
+      </article>
+    </section>
+    <section class="section" id="sources" hidden>
+      <div class="section-head"><h1>논문 출처</h1><p>첨부 자료에 기재된 출처 표기입니다.</p></div>
+      <article class="card formulas"><p>Graf (2020) · CGXII 케모스탯: μmax, Y, m<sub>S</sub></p><p>Steinhoff (2023) · 마이크로플루이딕: K<sub>S</sub></p><p>Zhang (2017) · iCW773: OD600–DCW 환산</p><p>van’t Riet (1979) · 비응집성 수용액 kLa 상관식</p></article>
+    </section>
+  </main>
+</div>
+<script>
+(function(root){
+  'use strict';
+  const fixed=Object.freeze({muMax:.44,ks:.00266,y:.571,maintenance:.079,odToDcw:.27,
+    initialOD:.2,s0:10,volumeMax:2.5,hours:24,brothMax:50,doSat:7.53,density:1000,
+    area:.0201,diameter:.064,impellers:2,np:5,gassed:.5,o2:12});
+  const options=Object.freeze({mu:[.1,.2,.3,.4],rpm:Array.from({length:12},(_,i)=>(i+1)*100),
+    volume:[.5,.6,.7,.8,.9,1],threshold:[5,4,3,2,1],vvm:[.5,1,2],
+    feed:[100,200,300,400,500,600,700,800]});
+  function transfer(rpm,volume,vvm){
+    const p0=fixed.np*fixed.density*(rpm/60)**3*fixed.diameter**5*fixed.impellers;
+    const pv=p0*fixed.gassed/(volume/1000);
+    const air=vvm*volume;
+    const vs=(air/60000)/fixed.area;
+    const kla=3600*.026*pv**.4*vs**.5;
+    return {pv,vs,kla,air,capacity:kla*fixed.doSat/32};
+  }
+  function simulate(p){
+    for(const key of Object.keys(options)) if(!options[key].includes(p[key])) throw Error('선택 범위를 확인해 주세요.');
+    const f=fixed, initialMass=f.initialOD*f.odToDcw*p.volume;
+    let t=0,volume=p.volume,mass=initialMass,substrate=f.s0*volume,used=0,feedAt=null,next=.5;
+    const rows=[];
+    function state(){
+      const s=substrate/volume,x=mass/volume, k=transfer(p.rpm,volume,p.vvm);
+      const monod=f.muMax*s/(f.ks+s);
+      const allowed=Math.max(0,(k.capacity/(f.o2*x)-f.maintenance)*f.y);
+      const limited=allowed+1e-9<p.mu;
+      const substrateLimited=monod+1e-9<p.mu;
+      const mu=Math.min(p.mu,monod,allowed);
+      const qs=s>0?mu/f.y+f.maintenance:0;
+      const uptake=Math.min(k.capacity,f.o2*qs*x);
+      const dissolved=Math.max(0,f.doSat-32*uptake/k.kla);
+      const flow=!limited && !substrateLimited && s<=p.threshold+1e-8 && t<f.hours-1e-8 && volume<f.volumeMax-1e-8
+        ?(p.mu/f.y+f.maintenance)*mass/(p.feed-p.threshold):0;
+      return {t,x,s,volume,mu,qs,flow,air:k.air,otr:k.kla*(f.doSat-dissolved)/32,kla:k.kla,
+        capacity:k.capacity,doPct:dissolved/f.doSat*100,limited,substrateLimited,used,mass,
+        yield:used>0?(mass-initialMass)/used:null};
+    }
+    rows.push(state());
+    while(t<f.hours-1e-8 && volume<f.volumeMax-1e-8){
+      const a=state();
+      if(a.limited||a.substrateLimited) break;
+      let dt=Math.min(.005,f.hours-t,next-t,a.flow>0?(f.volumeMax-volume)/a.flow:Infinity);
+      const consumption=Math.min(a.qs*mass, a.capacity*volume/f.o2);
+      if(consumption>0 && a.s>p.threshold+1e-8){
+        dt=Math.min(dt,(substrate-p.threshold*volume)/consumption);
       }
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      return true;
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement("div");
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    function showToast(msg, isError) {
-      const toast = document.getElementById("toast");
-      toast.textContent = msg;
-      toast.classList.toggle("error", !!isError);
-      toast.classList.add("show");
-      setTimeout(() => toast.classList.remove("show"), 2200);
-    }
-
-    function formatTime(iso) {
-      if (!iso) return "";
-      try {
-        return new Date(iso).toLocaleString("ko-KR");
-      } catch { return iso; }
-    }
-
-    // ---------- 사이즈 드롭다운 ----------
-    function initSizeSelect() {
-      const select = document.getElementById("size");
-      select.innerHTML = "";
-      for (let s = SIZE_MIN; s <= SIZE_MAX; s += SIZE_STEP) {
-        const opt = document.createElement("option");
-        opt.value = s;
-        opt.textContent = s;
-        if (s === 250) opt.selected = true;
-        select.appendChild(opt);
+      // Before consumption, mixed glucose must remain below the broth limit.
+      if(a.flow>0 && p.feed>f.brothMax){
+        dt=Math.min(dt,Math.max(0,f.brothMax*volume-substrate)/(a.flow*(p.feed-f.brothMax)));
       }
+      const uptake=Math.min(substrate+a.flow*p.feed*dt,consumption*dt);
+      volume+=a.flow*dt;
+      substrate=Math.max(0,substrate+a.flow*p.feed*dt-uptake);
+      mass+=Math.min(a.mu*mass*dt,uptake*f.y);
+      used+=uptake;
+      t+=dt;
+      if(feedAt===null && substrate/volume<=p.threshold+1e-8) feedAt=t;
+      if(t>=next-1e-8){t=next;rows.push(state());next+=.5;}
     }
+    const end=state();
+    if(Math.abs(rows.at(-1).t-end.t)>1e-8) rows.push(end);
+    const reason=volume>=f.volumeMax-1e-8?'2.5 L 도달':t>=f.hours-1e-8?'24시간 도달':
+      end.limited?'산소 제한: 목표 μ 유지 불가':'기질 제한: 목표 μ 유지 불가';
+    return {rows,end,feedAt,reason};
+  }
+  function compare(p){
+    return options.threshold.map(threshold=>({threshold,...simulate({...p,threshold})}))
+      .sort((a,b)=>(b.end.yield??-1)-(a.end.yield??-1)||b.threshold-a.threshold);
+  }
+  const api={fixed,options,transfer,simulate,compare};
+  if(typeof module==='object') module.exports=api; else root.FedBatch=api;
+})(globalThis);
 
-    // ---------- 탭 ----------
-    function showTab(tab) {
-      ["order", "list", "admin"].forEach(t => {
-        document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab);
-        document.getElementById("tabBtn-" + t).classList.toggle("active", t === tab);
-      });
-      if (tab === "list") renderList();
-      if (tab === "admin") {
-        if (sessionStorage.getItem(ADMIN_SESSION) === "1") {
-          showAdminPanel();
-        } else {
-          document.getElementById("adminLogin").classList.remove("hidden");
-          document.getElementById("adminPanel").classList.add("hidden");
-        }
-      }
-    }
+</script>
+<script>
+(() => {
+  'use strict';
+  const model=window.FedBatch, $=id=>document.getElementById(id), fmt=(v,n=2)=>v==null?'—':v.toFixed(n);
+  const series={x:['균체 농도','g/L'],s:['잔류 글루코스','g/L'],volume:['부피','L'],doPct:['DO','%'],otr:['OTR','mmol/L/h'],mu:['비성장속도','1/h']};
+  const keys=['t','x','s','volume','mu','doPct','otr','kla','flow'];
+  let result,cursor=0;
+  for(const [k,values] of Object.entries(model.options)){
+    if(k==='feed') continue;
+    for(const v of values) $(k).add(new Option(k==='volume'?v.toFixed(1):v,v));
+  }
+  for(const [k,[label]] of Object.entries(series)) $('series').add(new Option(label,k));
+  $('mu').value='.2'.replace(/^\./,'0.'); $('rpm').value='1200'; $('volume').value='1';
+  $('vvm').value='1';
+  function params(){return Object.fromEntries(['mu','rpm','volume','threshold','feed','vvm'].map(k=>[k,$(k).valueAsNumber??Number($(k).value)]));}
+  const cells=values=>values.map(v=>'<td>'+v+'</td>').join('');
+  const sample=row=>keys.map(k=>k==='flow'?row[k]*1000:row[k]);
+  function run(){
+    if(!$('setup').reportValidity()) return;
+    try {
+      const p=params();
+      result=model.simulate(p);
+      const ranked=model.compare(p), best=ranked[0], e=result.end;
+      const tied=ranked.filter(r=>r.end.yield!==null && Math.abs(r.end.yield-best.end.yield)<1e-7);
+      $('best').textContent=best.end.yield===null?'비교 가능한 수율이 없습니다.':
+        '모델 수율 최고: '+tied.map(r=>r.threshold).join(' · ')+' g/L ('+fmt(best.end.yield,4)+' g/g)';
+      $('ranking').innerHTML=ranked.map(r=>'<tr>'+cells([r.threshold,fmt(r.feedAt),fmt(r.end.t),fmt(r.end.mass),fmt(r.end.yield,4),'<button class="btn sm" type="button" data-threshold="'+r.threshold+'">적용</button>'])+'</tr>').join('');
+      const metrics=[['균체 농도',fmt(e.x),'g/L'],['총 균체량',fmt(e.mass),'g'],['겉보기 수율',fmt(e.yield,4),'g/g'],['잔류 글루코스',fmt(e.s),'g/L'],['OTR',fmt(e.otr),'mmol/L/h'],['공급 개시',fmt(result.feedAt),result.feedAt==null?'미개시':'h']];
+      $('metrics').innerHTML=metrics.map(([k,v,u])=>'<div class="tile"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="u">'+u+'</div></div>').join('');
+      $('end-info').textContent=fmt(e.t)+' h · '+result.reason+' · 종료 시 공기 '+fmt(e.air)+' L/min';
+      $('vessel-label').textContent=fmt(e.volume)+' L / 2.50 L';
+      const fill=e.volume/2.5*117;
+      $('liquid').setAttribute('height',fill); $('liquid').setAttribute('y',167-fill);
+      $('samples').innerHTML=result.rows.map(r=>'<tr>'+cells(sample(r).map((v,i)=>fmt(v,i===4?3:2)))+'</tr>').join('');
+      cursor=Math.min(cursor,result.rows.length-1); $('time').max=result.rows.length-1;
+      graph(); $('run-status').textContent='';
+    } catch(error) { $('run-status').textContent=error.message; }
+  }
+  function graph(){
+    const k=$('series').value,[label,unit]=series[k], rows=result.rows;
+    const top=Math.max(...rows.map(r=>r[k]),.001)*1.07;
+    const x=t=>70+t*32, y=v=>290-253*v/top;
+    const r=rows[cursor];
+    $('time').value=cursor;
+    $('time').setAttribute('aria-valuetext',fmt(r.t)+'시간');
+    $('point').textContent=fmt(r.t)+' h · '+label+' '+fmt(r[k],k==='mu'?3:2)+' '+unit;
+    const grid=Array.from({length:5},(_,i)=>{const v=i*top/4;return '<path d="M70 '+y(v)+'H838" stroke="#dce5e8"/><text x="62" y="'+(y(v)+4)+'" text-anchor="end">'+fmt(v,k==='mu'?3:1)+'</text>';}).join('');
+    const ticks=Array.from({length:7},(_,i)=>'<text x="'+x(i*4)+'" y="318" text-anchor="middle">'+i*4+' h</text>').join('');
+    $('graph').innerHTML='<g fill="#536772" font-size="13">'+grid+ticks+'</g><polyline fill="none" stroke="#14736b" stroke-width="3" points="'+rows.map(r=>x(r.t)+','+y(r[k])).join(' ')+'"/><path d="M'+x(r.t)+' 37V290" stroke="#547a7e" stroke-dasharray="4 4"/><circle cx="'+x(r.t)+'" cy="'+y(r[k])+'" r="6" fill="#14736b"/>';
+  }
+  $('constants').innerHTML=[
+    ['μmax / KS','0.44 h⁻¹ / 0.00266 g/L','Monod'],
+    ['Y / mS','0.571 g/g / 0.079 g/(g·h)','기질 소비'],
+    ['산소 환산','12 mmol/g','첨부 하단의 단일 계수 근사'],
+    ['성장·유지 산소 환산','10.5 / 33.4 mmol/g','참고 전용 · 12와 중복 적용하지 않음'],
+    ['DCW 환산 / 초기 OD600','0.27 g/L per OD600 / 0.20','초기 균체량 계산 · 환산계수 미검증, 초기 OD는 기존 가정'],
+    ['초기 글루코스 / 작업 부피 상한','10 g/L / 2.5 L','고정값'],
+    ['장비 정격 / 용기 내경','5 L / 160 mm','장비 참고값 · 모델 부피 상한과 다름'],
+    ['공기 유량 / 순산소','선택 vvm × 현재 배양 부피 / 사용 안 함','0.5 / 1 / 2 vvm 중 선택'],
+    ['배양기 내부 글루코스','최대 50 g/L','공급 직후 혼합 농도 기준'],
+    ['포화 DO / 온도','7.53 mg/L / 30 °C','공기 기준'],
+    ['임펠러 / 동력수','Rushton 64 mm × 2단 / 5','동력식'],
+    ['단면적 / 통기 동력비 / 밀도','201 cm² / 0.5 / 1000 kg/m³','kLa 계산 · 실제 액량 사용'],
+    ['장비 통기 사양','AIR 1–10 L/min / O₂ 0.5–5 L/min','참고 전용']
+  ].map(row=>'<tr>'+cells(row)+'</tr>').join('');
+  $('setup').addEventListener('submit',e=>{e.preventDefault();run();});
+  $('series').addEventListener('change',graph);
+  $('time').addEventListener('input',()=>{cursor=Number($('time').value);graph();});
+  function seek(e){
+    const svg=$('graph'),point=svg.createSVGPoint();point.x=e.clientX;point.y=e.clientY;
+    const x=point.matrixTransform(svg.getScreenCTM().inverse()).x, t=(x-70)/32;
+    cursor=result.rows.reduce((best,r,i)=>Math.abs(r.t-t)<Math.abs(result.rows[best].t-t)?i:best,0);graph();
+  }
+  $('graph').addEventListener('pointerdown',e=>{$('graph').setPointerCapture(e.pointerId);seek(e);});
+  $('graph').addEventListener('pointermove',e=>{if($('graph').hasPointerCapture(e.pointerId))seek(e);});
+  $('ranking').addEventListener('click',e=>{
+    const btn=e.target.closest('[data-threshold]');if(!btn)return;
+    $('threshold').value=btn.dataset.threshold;run();location.hash='overview';
+  });
+  $('csv').addEventListener('click',()=>{
+    const content='\ufeff시간(h),균체(g/L),글루코스(g/L),부피(L),mu(1/h),DO(%),OTR(mmol/L/h),kLa(1/h),공급(mL/h)\r\n'+
+      result.rows.map(row=>sample(row).map(v=>v.toFixed(6)).join(',')).join('\r\n');
+    const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');
+    a.href=url;a.download='fed-batch-30min.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+  function route(){
+    const pages=[...document.querySelectorAll('main > section')];
+    const id=pages.find(p=>'#'+p.id===location.hash)?.id||'overview';
+    pages.forEach(p=>p.hidden=p.id!==id);
+    document.querySelectorAll('.rail nav a').forEach(a=>a.hash==='#'+id?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
+  }
+  addEventListener('hashchange',route);run();route();
+})();
 
-    // ---------- 주문 제출 ----------
-    async function submitOrder() {
-      if (!supabase) {
-        showToast("Supabase 설정이 필요합니다", true);
-        return;
-      }
-      const name = document.getElementById("name").value.trim();
-      const size = parseInt(document.getElementById("size").value, 10);
-      if (!name) {
-        showToast("이름을 입력해주세요", true);
-        return;
-      }
-
-      const btn = document.getElementById("submitBtn");
-      btn.disabled = true;
-      btn.textContent = "제출 중...";
-
-      const { error } = await supabase.from("orders").insert({
-        name: name,
-        size: size,
-        paid: false,
-        deleted: false
-      });
-
-      btn.disabled = false;
-      btn.textContent = "주문 제출하기";
-
-      if (error) {
-        console.error(error);
-        showToast("저장 실패: " + error.message, true);
-        return;
-      }
-
-      document.getElementById("name").value = "";
-      showToast("✅ 주문이 접수되었습니다!");
-    }
-
-    // ---------- 주문 목록 (일반) ----------
-    function setFilter(filter, btn) {
-      currentFilter = filter;
-      document.querySelectorAll("#tab-list .filter-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      renderList();
-    }
-
-    async function fetchActiveOrders() {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("deleted", false)
-        .order("created_at", { ascending: false });
-      if (error) {
-        console.error(error);
-        showToast("목록 불러오기 실패", true);
-        return [];
-      }
-      return data || [];
-    }
-
-    async function renderList() {
-      if (!supabase) {
-        document.getElementById("orderList").innerHTML = '<div class="empty">Supabase 설정 필요</div>';
-        return;
-      }
-      const orders = await fetchActiveOrders();
-      let filtered = orders;
-      if (currentFilter === "paid") filtered = orders.filter(o => o.paid);
-      if (currentFilter === "unpaid") filtered = orders.filter(o => !o.paid);
-
-      const listEl = document.getElementById("orderList");
-      const statsEl = document.getElementById("stats");
-
-      if (filtered.length === 0) {
-        listEl.innerHTML = '<div class="empty">' + (orders.length === 0 ? "아직 주문이 없습니다" : "해당 조건의 주문이 없습니다") + '</div>';
-      } else {
-        listEl.innerHTML = filtered.map(o =>
-          '<div class="order-item">' +
-            '<input type="checkbox" ' + (o.paid ? "checked" : "") +
-              ' onchange="togglePaid(\'' + o.id + '\', this.checked)" />' +
-            '<div class="order-info">' +
-              '<div class="order-name">' + escapeHtml(o.name) + '</div>' +
-              '<div class="order-meta">사이즈 ' + o.size + ' · ' + formatTime(o.created_at) + '</div>' +
-            '</div>' +
-            '<span class="badge ' + (o.paid ? "paid" : "unpaid") + '">' +
-              (o.paid ? "입금완료" : "미입금") + '</span>' +
-          '</div>'
-        ).join("");
-      }
-
-      const paidCount = orders.filter(o => o.paid).length;
-      statsEl.innerHTML =
-        '<div class="stat"><div class="num">' + orders.length + '</div><div class="label">전체</div></div>' +
-        '<div class="stat"><div class="num" style="color:var(--green)">' + paidCount + '</div><div class="label">입금완료</div></div>' +
-        '<div class="stat"><div class="num" style="color:var(--red)">' + (orders.length - paidCount) + '</div><div class="label">미입금</div></div>';
-    }
-
-    async function togglePaid(id, checked) {
-      if (!supabase) return;
-      const { error } = await supabase
-        .from("orders")
-        .update({ paid: checked })
-        .eq("id", id);
-      if (error) {
-        showToast("업데이트 실패", true);
-        renderList();
-        return;
-      }
-      renderList();
-    }
-
-    // ---------- 관리자 ----------
-    function adminLogin() {
-      const pw = document.getElementById("adminPw").value;
-      if (pw === ADMIN_PW) {
-        sessionStorage.setItem(ADMIN_SESSION, "1");
-        document.getElementById("adminPw").value = "";
-        showAdminPanel();
-        showToast("관리자 로그인 성공");
-      } else {
-        showToast("비밀번호가 틀렸습니다", true);
-      }
-    }
-
-    function adminLogout() {
-      sessionStorage.removeItem(ADMIN_SESSION);
-      document.getElementById("adminLogin").classList.remove("hidden");
-      document.getElementById("adminPanel").classList.add("hidden");
-      showToast("로그아웃 되었습니다");
-    }
-
-    function showAdminPanel() {
-      document.getElementById("adminLogin").classList.add("hidden");
-      document.getElementById("adminPanel").classList.remove("hidden");
-      renderAdminList();
-    }
-
-    function setAdminFilter(filter, btn) {
-      adminFilter = filter;
-      document.getElementById("adminFilter-active").classList.toggle("active", filter === "active");
-      document.getElementById("adminFilter-trash").classList.toggle("active", filter === "trash");
-      renderAdminList();
-    }
-
-    async function fetchTrashOrders() {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("deleted", true)
-        .order("deleted_at", { ascending: false });
-      if (error) {
-        console.error(error);
-        return [];
-      }
-      return data || [];
-    }
-
-    async function renderAdminList() {
-      if (!supabase) {
-        document.getElementById("adminList").innerHTML = '<div class="empty">Supabase 설정 필요</div>';
-        return;
-      }
-      const listEl = document.getElementById("adminList");
-      const statsEl = document.getElementById("adminStats");
-
-      if (adminFilter === "active") {
-        const orders = await fetchActiveOrders();
-        if (orders.length === 0) {
-          listEl.innerHTML = '<div class="empty">주문이 없습니다</div>';
-        } else {
-          listEl.innerHTML = orders.map(o =>
-            '<div class="order-item">' +
-              '<div class="order-info">' +
-                '<div class="order-name">' + escapeHtml(o.name) + '</div>' +
-                '<div class="order-meta">사이즈 ' + o.size + ' · ' + formatTime(o.created_at) +
-                  ' · ' + (o.paid ? "입금완료" : "미입금") + '</div>' +
-              '</div>' +
-              '<button class="btn btn-sm btn-danger" onclick="askDelete(\'' + o.id + '\')">삭제</button>' +
-            '</div>'
-          ).join("");
-        }
-        const trash = await fetchTrashOrders();
-        statsEl.innerHTML =
-          '<div class="stat"><div class="num">' + orders.length + '</div><div class="label">주문</div></div>' +
-          '<div class="stat"><div class="num">' + trash.length + '</div><div class="label">휴지통</div></div>';
-      } else {
-        const trash = await fetchTrashOrders();
-        if (trash.length === 0) {
-          listEl.innerHTML = '<div class="empty">휴지통이 비어 있습니다</div>';
-        } else {
-          listEl.innerHTML = trash.map(o =>
-            '<div class="order-item">' +
-              '<div class="order-info">' +
-                '<div class="order-name">' + escapeHtml(o.name) + '</div>' +
-                '<div class="order-meta">사이즈 ' + o.size + ' · ' + formatTime(o.created_at) + '</div>' +
-              '</div>' +
-              '<button class="btn btn-sm btn-recover" onclick="recoverOrder(\'' + o.id + '\')">복구</button>' +
-            '</div>'
-          ).join("");
-        }
-        statsEl.innerHTML =
-          '<div class="stat"><div class="num">' + trash.length + '</div><div class="label">휴지통</div></div>';
-      }
-    }
-
-    function askDelete(id) {
-      pendingDeleteId = id;
-      document.getElementById("confirmModal").classList.remove("hidden");
-      document.getElementById("confirmDeleteBtn").onclick = function () {
-        doDelete(pendingDeleteId);
-        closeModal();
-      };
-    }
-
-    function closeModal() {
-      document.getElementById("confirmModal").classList.add("hidden");
-      pendingDeleteId = null;
-    }
-
-    async function doDelete(id) {
-      if (!supabase) return;
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          deleted: true,
-          deleted_at: new Date().toISOString()
-        })
-        .eq("id", id);
-      if (error) {
-        showToast("삭제 실패", true);
-        return;
-      }
-      showToast("휴지통으로 이동되었습니다");
-      renderAdminList();
-    }
-
-    async function recoverOrder(id) {
-      if (!supabase) return;
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          deleted: false,
-          deleted_at: null
-        })
-        .eq("id", id);
-      if (error) {
-        showToast("복구 실패", true);
-        return;
-      }
-      showToast("주문이 복구되었습니다");
-      renderAdminList();
-    }
-
-    // ---------- 초기화 ----------
-    initSizeSelect();
-    const ok = initSupabase();
-    if (ok) {
-      // 엔터키 로그인
-      document.getElementById("adminPw").addEventListener("keydown", function (e) {
-        if (e.key === "Enter") adminLogin();
-      });
-    }
-  </script>
+</script>
 </body>
 </html>
